@@ -3,7 +3,7 @@
 	import ImageEditor from "./Index.svelte";
 	import { format } from "svelte-i18n";
 	import { get } from "svelte/store";
-	import { userEvent, within } from "@storybook/testing-library";
+	import { userEvent, within } from "@storybook/test";
 	import { allModes } from "../storybook/modes";
 
 	export const meta = {
@@ -11,6 +11,7 @@
 		component: ImageEditor,
 		parameters: {
 			chromatic: {
+				diffThreshold: 0.4,
 				modes: {
 					desktop: allModes["desktop"],
 					mobile: allModes["mobile"]
@@ -25,7 +26,11 @@
 		class="image-container"
 		style="width: 500px; position: relative;border-radius: var(--radius-lg);overflow: hidden;"
 	>
-		<ImageEditor i18n={get(format)} {...args} />
+		<ImageEditor
+			i18n={get(format)}
+			{...args}
+			server={{ accept_blobs: () => {} }}
+		/>
 	</div>
 </Template>
 
@@ -49,7 +54,7 @@
 	}}
 />
 
-<Story
+<!-- <Story
 	name="Image Editor Drawing Interactions"
 	args={{
 		value: {
@@ -117,7 +122,7 @@
 			coords: { clientX: 100, clientY: 100 }
 		});
 
-		await userEvent.click(canvas.getByLabelText("Color button"));
+		await userEvent.click(canvas.getByLabelText("Draw button"));
 
 		var availableColors = document.querySelectorAll(
 			"button.color:not(.empty):not(.selected):not(.hidden)"
@@ -198,7 +203,7 @@
 
 		await userEvent.click(canvas.getByLabelText("Clear canvas"));
 	}}
-/>
+/> -->
 
 <Story
 	name="Image Editor Undo/Redo Interactions"
@@ -209,6 +214,7 @@
 			orig_name: "cheetah.jpg"
 		},
 		type: "pil",
+		placeholder: "Upload an image of a cat",
 		sources: ["upload", "webcam"],
 		interactive: "true",
 		brush: {

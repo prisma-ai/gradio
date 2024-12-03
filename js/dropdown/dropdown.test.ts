@@ -1,7 +1,7 @@
 import { test, describe, assert, afterEach, vi } from "vitest";
-import { cleanup, render } from "@gradio/tootils";
+import { cleanup, render } from "@self/tootils";
 import event from "@testing-library/user-event";
-import { setupi18n } from "../app/src/i18n";
+import { setupi18n } from "../core/src/i18n";
 
 import Dropdown from "./Index.svelte";
 import type { LoadingStatus } from "@gradio/statustracker";
@@ -190,7 +190,6 @@ describe("Dropdown", () => {
 	});
 
 	test("deselecting and reselcting a filtered dropdown should show all options again", async () => {
-		vi.useFakeTimers();
 		const { getByLabelText, getAllByTestId } = await render(Dropdown, {
 			show_label: true,
 			loading_status,
@@ -219,7 +218,6 @@ describe("Dropdown", () => {
 
 		await item.blur();
 		// Mock 100ms delay between interactions.
-		vi.runAllTimers();
 		await item.focus();
 		const options_new = getAllByTestId("dropdown-option");
 
@@ -275,7 +273,7 @@ describe("Dropdown", () => {
 			{
 				show_label: true,
 				loading_status,
-				value: "",
+				value: "apple",
 				allow_custom_value: false,
 				label: "Dropdown",
 				choices: [
@@ -305,7 +303,7 @@ describe("Dropdown", () => {
 			{
 				show_label: true,
 				loading_status,
-				value: "",
+				value: "apple",
 				allow_custom_value: true,
 				label: "Dropdown",
 				choices: [
@@ -335,7 +333,7 @@ describe("Dropdown", () => {
 			{
 				show_label: true,
 				loading_status,
-				value: "",
+				value: "apple",
 				allow_custom_value: false,
 				label: "Dropdown",
 				choices: [
@@ -379,7 +377,7 @@ describe("Dropdown", () => {
 			{
 				show_label: true,
 				loading_status,
-				value: "",
+				value: "apple_internal_value",
 				allow_custom_value: false,
 				label: "Dropdown",
 				choices: [
@@ -474,11 +472,32 @@ describe("Dropdown", () => {
 		await expect(item.value).toBe("apple_choice");
 	});
 
-	test("ensure dropdown can have an empty value", async () => {
+	test("ensure dropdown can have the first item of the choices as a default value", async () => {
 		const { getByLabelText } = await render(Dropdown, {
 			show_label: true,
 			loading_status,
 			allow_custom_value: false,
+			value: "apple_internal_value",
+			label: "Dropdown",
+			choices: [
+				["apple_choice", "apple_internal_value"],
+				["zebra_choice", "zebra_internal_value"]
+			],
+			filterable: true,
+			interactive: true
+		});
+		const item: HTMLInputElement = getByLabelText(
+			"Dropdown"
+		) as HTMLInputElement;
+		await expect(item.value).toBe("apple_choice");
+	});
+
+	test("ensure dropdown works when initial value is undefined and allow_custom_value is true", async () => {
+		const { getByLabelText } = await render(Dropdown, {
+			show_label: true,
+			loading_status,
+			value: undefined,
+			allow_custom_value: true,
 			label: "Dropdown",
 			choices: [
 				["apple_choice", "apple_internal_value"],

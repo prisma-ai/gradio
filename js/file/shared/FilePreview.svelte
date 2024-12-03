@@ -8,6 +8,8 @@
 	const dispatch = createEventDispatcher<{
 		select: SelectData;
 		change: FileData[] | FileData;
+		delete: FileData;
+		download: FileData;
 	}>();
 	export let value: FileData | FileData[];
 	export let selectable = false;
@@ -31,12 +33,35 @@
 		};
 	});
 
+	function handle_row_click(
+		event: MouseEvent & { currentTarget: HTMLTableRowElement },
+		index: number
+	): void {
+		const tr = event.currentTarget;
+		const should_select =
+			event.target === tr || // Only select if the click is on the row itself
+			(tr &&
+				tr.firstElementChild &&
+				event.composedPath().includes(tr.firstElementChild)); // Or if the click is on the name column
+
+		if (should_select) {
+			dispatch("select", { value: normalized_files[index].orig_name, index });
+		}
+	}
+
 	function remove_file(index: number): void {
-		normalized_files.splice(index, 1);
+		const removed = normalized_files.splice(index, 1);
 		normalized_files = [...normalized_files];
 		value = normalized_files;
+		dispatch("delete", removed[0]);
 		dispatch("change", normalized_files);
 	}
+
+	function handle_download(file: FileData): void {
+		dispatch("download", file);
+	}
+
+	const is_browser = typeof window !== "undefined";
 </script>
 
 <div
@@ -45,15 +70,13 @@
 >
 	<table class="file-preview">
 		<tbody>
-			{#each normalized_files as file, i}
+			{#each normalized_files as file, i (file)}
 				<tr
 					class="file"
 					class:selectable
-					on:click={() =>
-						dispatch("select", {
-							value: file.orig_name,
-							index: i
-						})}
+					on:click={(event) => {
+						handle_row_click(event, i);
+					}}
 				>
 					<td class="filename" aria-label={file.orig_name}>
 						<span class="stem">{file.filename_stem}</span>
@@ -64,7 +87,10 @@
 						{#if file.url}
 							<DownloadLink
 								href={file.url}
-								download={window.__is_colab__ ? null : file.orig_name}
+								on:click={() => handle_download(file)}
+								download={is_browser && window.__is_colab__
+									? null
+									: file.orig_name}
 							>
 								{@html file.size != null
 									? prettyBytes(file.size)
@@ -74,12 +100,15 @@
 							{i18n("file.uploading")}
 						{/if}
 					</td>
+
 					{#if normalized_files.length > 1}
 						<td>
 							<button
 								class="label-clear-button"
 								aria-label="Remove this file"
-								on:click={() => remove_file(i)}
+								on:click={() => {
+									remove_file(i);
+								}}
 								on:keydown={(event) => {
 									if (event.key === "Enter") {
 										remove_file(i);
@@ -113,6 +142,10 @@
 		overflow-y: auto;
 		margin-top: var(--size-1);
 		color: var(--body-text-color);
+	}
+
+	.file-preview-holder {
+		overflow: auto;
 	}
 
 	.file {

@@ -1,46 +1,35 @@
 <script lang="ts">
-	import { Like } from "@gradio/icons";
-	import { Dislike } from "@gradio/icons";
+	import { IconButton } from "@gradio/atoms";
+	import ThumbDownActive from "./ThumbDownActive.svelte";
+	import ThumbDownDefault from "./ThumbDownDefault.svelte";
+	import ThumbUpActive from "./ThumbUpActive.svelte";
+	import ThumbUpDefault from "./ThumbUpDefault.svelte";
 
 	export let handle_action: (selected: string | null) => void;
 
 	let selected: "like" | "dislike" | null = null;
 </script>
 
-<button
-	on:click={() => {
-		selected = "like";
-		handle_action(selected);
-	}}
-	aria-label={selected === "like" ? "clicked like" : "like"}
->
-	<Like selected={selected === "like"} />
-</button>
-
-<button
+<IconButton
+	Icon={selected === "dislike" ? ThumbDownActive : ThumbDownDefault}
+	label={selected === "dislike" ? "clicked dislike" : "dislike"}
+	color={selected === "dislike"
+		? "var(--color-accent)"
+		: "var(--block-label-text-color)"}
 	on:click={() => {
 		selected = "dislike";
 		handle_action(selected);
 	}}
-	aria-label={selected === "dislike" ? "clicked dislike" : "dislike"}
->
-	<Dislike selected={selected === "dislike"} />
-</button>
+/>
 
-<style>
-	button {
-		position: relative;
-		top: 0;
-		right: 0;
-		cursor: pointer;
-		color: var(--body-text-color-subdued);
-		width: 17px;
-		height: 17px;
-		margin-right: 5px;
-	}
-
-	button:hover,
-	button:focus {
-		color: var(--body-text-color);
-	}
-</style>
+<IconButton
+	Icon={selected === "like" ? ThumbUpActive : ThumbUpDefault}
+	label={selected === "like" ? "clicked like" : "like"}
+	color={selected === "like"
+		? "var(--color-accent)"
+		: "var(--block-label-text-color)"}
+	on:click={() => {
+		selected = "like";
+		handle_action(selected);
+	}}
+/>

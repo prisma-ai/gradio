@@ -1,5 +1,242 @@
 # @gradio/tabitem
 
+## 0.3.5
+
+### Dependency updates
+
+- @gradio/tabs@0.3.5
+- @gradio/utils@0.9.0
+- @gradio/column@0.2.0
+
+## 0.3.4
+
+### Dependency updates
+
+- @gradio/tabs@0.3.4
+- @gradio/utils@0.8.0
+- @gradio/column@0.2.0
+
+## 0.3.3
+
+### Dependency updates
+
+- @gradio/column@0.2.0
+
+## 0.3.3
+
+### Dependency updates
+
+- @gradio/tabs@0.3.3
+- @gradio/column@0.2.0
+
+## 0.3.2
+
+### Fixes
+
+- [#9653](https://github.com/gradio-app/gradio/pull/9653) [`61cd768`](https://github.com/gradio-app/gradio/commit/61cd768490a12f5d63101d5434092bcd1cfc43a8) - Ensures tabs with visible set to false are not visible.  Thanks @hannahblair!
+
+### Dependency updates
+
+- @gradio/tabs@0.3.2
+- @gradio/column@0.2.0
+
+## 0.3.1
+
+### Dependency updates
+
+- @gradio/column@0.2.0
+
+## 0.3.1
+
+### Dependency updates
+
+- @gradio/column@0.2.0
+- @gradio/tabs@0.3.1
+
+## 0.3.0
+
+### Dependency updates
+
+- @gradio/column@0.2.0
+
+## 0.3.0
+
+### Features
+
+- [#8843](https://github.com/gradio-app/gradio/pull/8843) [`6f95286`](https://github.com/gradio-app/gradio/commit/6f95286337459efbccb95c9cfac63355669df9ee) - Playground requirements tab
+- [#8843](https://github.com/gradio-app/gradio/pull/8843) [`6f95286`](https://github.com/gradio-app/gradio/commit/6f95286337459efbccb95c9cfac63355669df9ee) - Redesign `gr.Tabs()`
+
+### Dependencies
+
+- @gradio/column@0.2.0
+- @gradio/tabs@0.3.0
+- @gradio/utils@0.7.0
+
+## 0.3.0-beta.4
+
+### Dependency updates
+
+- @gradio/tabs@0.3.0-beta.3
+- @gradio/column@0.2.0-beta.2
+
+## 0.3.0-beta.4
+
+### Dependency updates
+
+- @gradio/column@0.2.0-beta.2
+
+## 0.3.0-beta.3
+
+### Features
+
+- [#9460](https://github.com/gradio-app/gradio/pull/9460) [`7352a89`](https://github.com/gradio-app/gradio/commit/7352a89722da91461c32fd33588531f3edce9c48) - Playground requirements tab.  Thanks @whitphx!
+
+### Dependency updates
+
+- @gradio/tabs@0.3.0-beta.3
+- @gradio/column@0.2.0-beta.1
+
+## 0.3.0-beta.2
+
+### Dependency updates
+
+- @gradio/utils@0.7.0-beta.2
+- @gradio/column@0.2.0-beta.0
+- @gradio/tabs@0.3.0-beta.2
+
+## 0.3.0-beta.1
+
+### Features
+
+- [#9199](https://github.com/gradio-app/gradio/pull/9199) [`3175c7a`](https://github.com/gradio-app/gradio/commit/3175c7aebc6ad2466d31d6949580f5a3cb4cd698) - Redesign `gr.Tabs()`.  Thanks @hannahblair!
+
+### Dependency updates
+
+- @gradio/utils@0.7.0-beta.1
+- @gradio/tabs@0.3.0-beta.1
+- @gradio/column@0.2.0-beta.0
+
+## 0.2.15
+
+### Fixes
+
+- [#9163](https://github.com/gradio-app/gradio/pull/9163) [`2b6cbf2`](https://github.com/gradio-app/gradio/commit/2b6cbf25908e42cf027324e54ef2cc0baad11a91) - fix exports and generate types.  Thanks @pngwn!
+
+### Dependency updates
+
+- @gradio/utils@0.6.1
+- @gradio/column@0.1.4
+- @gradio/tabs@0.2.14
+
+## 0.2.14
+
+### Features
+
+- [#9118](https://github.com/gradio-app/gradio/pull/9118) [`e1c404d`](https://github.com/gradio-app/gradio/commit/e1c404da1143fb52b659d03e028bdba1badf443d) - setup npm-previews of all packages.  Thanks @pngwn!
+
+### Dependency updates
+
+- @gradio/utils@0.6.0
+- @gradio/column@0.1.3
+- @gradio/tabs@0.2.13
+
+## 0.2.13
+
+### Dependency updates
+
+- @gradio/column@0.1.2
+
+## 0.2.13
+
+### Dependency updates
+
+- @gradio/utils@0.5.2
+- @gradio/column@0.1.2
+- @gradio/tabs@0.2.12
+
+## 0.2.12
+
+### Dependency updates
+
+- @gradio/column@0.1.2
+
+## 0.2.12
+
+### Dependency updates
+
+- @gradio/utils@0.5.1
+- @gradio/column@0.1.2
+- @gradio/tabs@0.2.11
+
+## 0.2.11
+
+### Dependency updates
+
+- @gradio/utils@0.5.0
+- @gradio/column@0.1.2
+- @gradio/tabs@0.2.10
+
+## 0.2.10
+
+### Dependency updates
+
+- @gradio/column@0.1.2
+- @gradio/tabs@0.2.9
+
+## 0.2.10
+
+### Dependency updates
+
+- @gradio/column@0.1.2
+
+## 0.2.9
+
+### Dependency updates
+
+- @gradio/utils@0.4.2
+- @gradio/tabs@0.2.9
+
+## 0.2.8
+
+### Dependency updates
+
+- @gradio/utils@0.4.1
+- @gradio/column@0.1.1
+- @gradio/tabs@0.2.8
+
+## 0.2.7
+
+### Fixes
+
+- [#8066](https://github.com/gradio-app/gradio/pull/8066) [`624f9b9`](https://github.com/gradio-app/gradio/commit/624f9b9477f74a581a6c14119234f9efdfcda398) - make gradio dev tools a local dependency rather than bundling.  Thanks @pngwn!
+
+### Dependency updates
+
+- @gradio/column@0.1.1
+- @gradio/tabs@0.2.7
+- @gradio/utils@0.4.0
+
+## 0.2.6
+
+### Dependency updates
+
+- @gradio/utils@0.3.2
+- @gradio/tabs@0.2.6
+
+## 0.2.5
+
+### Dependency updates
+
+- @gradio/utils@0.3.1
+- @gradio/tabs@0.2.5
+
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [[`ba3ec13`](https://github.com/gradio-app/gradio/commit/ba3ec1300e81e64be7389d759b89284c66473158)]:
+  - @gradio/tabs@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

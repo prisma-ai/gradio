@@ -48,10 +48,15 @@
 		share: ShareData;
 		error: string;
 		warning: string;
+		clear_status: LoadingStatus;
 	}>;
 	export let interactive: boolean;
 	export let mirror_webcam: boolean;
 	export let include_audio: boolean;
+	export let loop = false;
+	export let input_ready: boolean;
+	let uploading = false;
+	$: input_ready = !uploading;
 
 	let _video: FileData | null = null;
 	let _subtitle: FileData | null = null;
@@ -137,6 +142,7 @@
 			autoscroll={gradio.autoscroll}
 			i18n={gradio.i18n}
 			{...loading_status}
+			on:clear_status={() => gradio.dispatch("clear_status", loading_status)}
 		/>
 
 		<StaticVideo
@@ -145,6 +151,7 @@
 			{label}
 			{show_label}
 			{autoplay}
+			{loop}
 			{show_share_button}
 			{show_download_button}
 			on:play={() => gradio.dispatch("play")}
@@ -154,6 +161,7 @@
 			on:share={({ detail }) => gradio.dispatch("share", detail)}
 			on:error={({ detail }) => gradio.dispatch("error", detail)}
 			i18n={gradio.i18n}
+			upload={(...args) => gradio.client.upload(...args)}
 		/>
 	</Block>
 {:else}
@@ -175,6 +183,7 @@
 			autoscroll={gradio.autoscroll}
 			i18n={gradio.i18n}
 			{...loading_status}
+			on:clear_status={() => gradio.dispatch("clear_status", loading_status)}
 		/>
 
 		<Video
@@ -183,6 +192,7 @@
 			on:change={handle_change}
 			on:drag={({ detail }) => (dragging = detail)}
 			on:error={handle_error}
+			bind:uploading
 			{label}
 			{show_label}
 			{show_download_button}
@@ -192,6 +202,7 @@
 			{include_audio}
 			{autoplay}
 			{root}
+			{loop}
 			{handle_reset_value}
 			on:clear={() => gradio.dispatch("clear")}
 			on:play={() => gradio.dispatch("play")}
@@ -202,6 +213,9 @@
 			on:start_recording={() => gradio.dispatch("start_recording")}
 			on:stop_recording={() => gradio.dispatch("stop_recording")}
 			i18n={gradio.i18n}
+			max_file_size={gradio.max_file_size}
+			upload={(...args) => gradio.client.upload(...args)}
+			stream_handler={(...args) => gradio.client.stream(...args)}
 		>
 			<UploadText i18n={gradio.i18n} type="video" />
 		</Video>

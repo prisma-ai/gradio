@@ -5,52 +5,118 @@
 		Circle,
 		Square,
 		DropdownArrow,
-		Webcam as WebcamIcon
+		Spinner
 	} from "@gradio/icons";
 	import type { I18nFormatter } from "@gradio/utils";
-	import type { FileData } from "@gradio/client";
-	import { prepare_files, upload } from "@gradio/client";
+	import { StreamingBar } from "@gradio/statustracker";
+	import { type FileData, type Client, prepare_files } from "@gradio/client";
 	import WebcamPermissions from "./WebcamPermissions.svelte";
 	import { fade } from "svelte/transition";
+	import {
+		get_devices,
+		get_video_stream,
+		set_available_devices
+	} from "./stream_utils";
+	import type { Base64File } from "./types";
 
 	let video_source: HTMLVideoElement;
+	let available_video_devices: MediaDeviceInfo[] = [];
+	let selected_device: MediaDeviceInfo | null = null;
+	let time_limit: number | null = null;
+	let stream_state: "open" | "waiting" | "closed" = "closed";
+
+	export const modify_stream: (state: "open" | "closed" | "waiting") => void = (
+		state: "open" | "closed" | "waiting"
+	) => {
+		if (state === "closed") {
+			time_limit = null;
+			stream_state = "closed";
+			value = null;
+		} else if (state === "waiting") {
+			stream_state = "waiting";
+		} else {
+			stream_state = "open";
+		}
+	};
+
+	export const set_time_limit = (time: number): void => {
+		if (recording) time_limit = time;
+	};
+
 	let canvas: HTMLCanvasElement;
 	export let streaming = false;
 	export let pending = false;
 	export let root = "";
+	export let stream_every = 1;
 
 	export let mode: "image" | "video" = "image";
 	export let mirror_webcam: boolean;
 	export let include_audio: boolean;
 	export let i18n: I18nFormatter;
+	export let upload: Client["upload"];
+	export let value: FileData | null | Base64File = null;
 
 	const dispatch = createEventDispatcher<{
-		stream: undefined;
+		stream: Blob | string;
 		capture: FileData | Blob | null;
 		error: string;
 		start_recording: undefined;
 		stop_recording: undefined;
+		close_stream: undefined;
 	}>();
 
-	onMount(() => (canvas = document.createElement("canvas")));
-	const size = {
-		width: { ideal: 1920 },
-		height: { ideal: 1440 }
-	};
-	async function access_webcam(device_id?: string): Promise<void> {
-		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-			dispatch("error", i18n("image.no_webcam_support"));
-			return;
+	onMount(() => {
+		canvas = document.createElement("canvas");
+		if (streaming && mode === "image") {
+			window.setInterval(() => {
+				if (video_source && !pending) {
+					take_picture();
+				}
+			}, stream_every * 1000);
 		}
+	});
+
+	const handle_device_change = async (event: InputEvent): Promise<void> => {
+		const target = event.target as HTMLInputElement;
+		const device_id = target.value;
+
+		await get_video_stream(include_audio, video_source, device_id).then(
+			async (local_stream) => {
+				stream = local_stream;
+				selected_device =
+					available_video_devices.find(
+						(device) => device.deviceId === device_id
+					) || null;
+				options_open = false;
+			}
+		);
+	};
+
+	async function access_webcam(): Promise<void> {
 		try {
-			stream = await navigator.mediaDevices.getUserMedia({
-				video: device_id ? { deviceId: { exact: device_id }, ...size } : size,
-				audio: include_audio
-			});
-			video_source.srcObject = stream;
-			video_source.muted = true;
-			video_source.play();
-			webcam_accessed = true;
+			get_video_stream(include_audio, video_source)
+				.then(async (local_stream) => {
+					webcam_accessed = true;
+					available_video_devices = await get_devices();
+					stream = local_stream;
+				})
+				.then(() => set_available_devices(available_video_devices))
+				.then((devices) => {
+					available_video_devices = devices;
+
+					const used_devices = stream
+						.getTracks()
+						.map((track) => track.getSettings()?.deviceId)[0];
+
+					selected_device = used_devices
+						? devices.find((device) => device.deviceId === used_devices) ||
+							available_video_devices[0]
+						: available_video_devices[0];
+				});
+
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+				dispatch("error", i18n("image.no_webcam_support"));
+			}
 		} catch (err) {
 			if (err instanceof DOMException && err.name == "NotAllowedError") {
 				dispatch("error", i18n("image.allow_webcam_access"));
@@ -82,11 +148,20 @@
 				context.drawImage(video_source, -video_source.videoWidth, 0);
 			}
 
+			if (streaming && (!recording || stream_state === "waiting")) {
+				return;
+			}
+			if (streaming) {
+				const image_data = canvas.toDataURL("image/jpeg");
+				dispatch("stream", image_data);
+				return;
+			}
+
 			canvas.toBlob(
 				(blob) => {
 					dispatch(streaming ? "stream" : "capture", blob);
 				},
-				"image/png",
+				`image/${streaming ? "jpeg" : "png"}`,
 				0.8
 			);
 		}
@@ -110,10 +185,10 @@
 						"sample." + mimeType.substring(6)
 					);
 					const val = await prepare_files([_video_blob]);
-					let value = (
+					let val_ = (
 						(await upload(val, root))?.filter(Boolean) as FileData[]
 					)[0];
-					dispatch("capture", value);
+					dispatch("capture", val_);
 					dispatch("stop_recording");
 				}
 			};
@@ -155,30 +230,15 @@
 			take_recording();
 		}
 		if (!recording && stream) {
+			dispatch("close_stream");
 			stream.getTracks().forEach((track) => track.stop());
 			video_source.srcObject = null;
 			webcam_accessed = false;
+			window.setTimeout(() => {
+				value = null;
+			}, 500);
+			value = null;
 		}
-	}
-
-	if (streaming && mode === "image") {
-		window.setInterval(() => {
-			if (video_source && !pending) {
-				take_picture();
-			}
-		}, 500);
-	}
-
-	async function select_source(): Promise<void> {
-		const devices = await navigator.mediaDevices.enumerateDevices();
-		video_sources = devices.filter((device) => device.kind === "videoinput");
-		options_open = true;
-	}
-
-	let video_sources: MediaDeviceInfo[] = [];
-	async function selectVideoSource(device_id: string): Promise<void> {
-		await access_webcam(device_id);
-		options_open = false;
 	}
 
 	let options_open = false;
@@ -211,15 +271,25 @@
 </script>
 
 <div class="wrap">
+	<StreamingBar {time_limit} />
 	<!-- svelte-ignore a11y-media-has-caption -->
 	<!-- need to suppress for video streaming https://github.com/sveltejs/svelte/issues/5967 -->
 	<video
 		bind:this={video_source}
 		class:flip={mirror_webcam}
-		class:hide={!webcam_accessed}
+		class:hide={!webcam_accessed || (webcam_accessed && !!value)}
+	/>
+	<!-- svelte-ignore a11y-missing-attribute -->
+	<img
+		src={value?.url}
+		class:hide={!webcam_accessed || (webcam_accessed && !value)}
 	/>
 	{#if !webcam_accessed}
-		<div in:fade={{ delay: 100, duration: 200 }} title="grant webcam access">
+		<div
+			in:fade={{ delay: 100, duration: 200 }}
+			title="grant webcam access"
+			style="height: 100%"
+		>
 			<WebcamPermissions on:click={async () => access_webcam()} />
 		</div>
 	{:else}
@@ -229,13 +299,26 @@
 				aria-label={mode === "image" ? "capture photo" : "start recording"}
 			>
 				{#if mode === "video" || streaming}
-					{#if recording}
-						<div class="icon red" title="stop recording">
-							<Square />
+					{#if streaming && stream_state === "waiting"}
+						<div class="icon-with-text" style="width:var(--size-24);">
+							<div class="icon color-primary" title="spinner">
+								<Spinner />
+							</div>
+							{i18n("audio.waiting")}
+						</div>
+					{:else if (streaming && stream_state === "open") || (!streaming && recording)}
+						<div class="icon-with-text">
+							<div class="icon color-primary" title="stop recording">
+								<Square />
+							</div>
+							{i18n("audio.stop")}
 						</div>
 					{:else}
-						<div class="icon red" title="start recording">
-							<Circle />
+						<div class="icon-with-text">
+							<div class="icon color-primary" title="start recording">
+								<Circle />
+							</div>
+							{i18n("audio.record")}
 						</div>
 					{/if}
 				{:else}
@@ -247,18 +330,19 @@
 			{#if !recording}
 				<button
 					class="icon"
-					on:click={select_source}
+					on:click={() => (options_open = true)}
 					aria-label="select input source"
 				>
 					<DropdownArrow />
 				</button>
 			{/if}
 		</div>
-		{#if options_open}
+		{#if options_open && selected_device}
 			<select
 				class="select-wrap"
 				aria-label="select source"
 				use:click_outside={handle_click_outside}
+				on:change={handle_device_change}
 			>
 				<button
 					class="inset-icon"
@@ -266,12 +350,15 @@
 				>
 					<DropdownArrow />
 				</button>
-				{#if video_sources.length === 0}
+				{#if available_video_devices.length === 0}
 					<option value="">{i18n("common.no_devices")}</option>
 				{:else}
-					{#each video_sources as source}
-						<option on:click={() => selectVideoSource(source.deviceId)}>
-							{source.label}
+					{#each available_video_devices as device}
+						<option
+							value={device.deviceId}
+							selected={selected_device.deviceId === device.deviceId}
+						>
+							{device.label}
 						</option>
 					{/each}
 				{/if}
@@ -313,6 +400,14 @@
 		color: var(--button-secondary-text-color);
 	}
 
+	.icon-with-text {
+		width: var(--size-20);
+		align-items: center;
+		margin: 0 var(--spacing-xl);
+		display: flex;
+		justify-content: space-evenly;
+	}
+
 	@media (--screen-md) {
 		button {
 			bottom: var(--size-4);
@@ -326,7 +421,6 @@
 	}
 
 	.icon {
-		opacity: 0.8;
 		width: 18px;
 		height: 18px;
 		display: flex;
@@ -334,9 +428,10 @@
 		align-items: center;
 	}
 
-	.red {
-		fill: red;
-		stroke: red;
+	.color-primary {
+		fill: var(--primary-600);
+		stroke: var(--primary-600);
+		color: var(--primary-600);
 	}
 
 	.flip {

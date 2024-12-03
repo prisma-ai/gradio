@@ -1,15 +1,12 @@
 import asyncio
-import ipaddress
 import json
 import os
 import warnings
 from unittest.mock import patch
 
-import httpx
 import pytest
 
 from gradio import analytics, wasm_utils
-from gradio.context import Context
 
 os.environ["GRADIO_ANALYTICS_ENABLED"] = "False"
 
@@ -28,20 +25,19 @@ class TestAnalytics:
                 == "unable to parse version details from package URL."
             )
 
-    @patch("httpx.post")
+    @patch("gradio.analytics._send_telemetry_in_thread")
     def test_error_analytics_doesnt_crash_on_connection_error(
-        self, mock_post, monkeypatch
+        self, mock_send, monkeypatch
     ):
         monkeypatch.setenv("GRADIO_ANALYTICS_ENABLED", "True")
-        mock_post.side_effect = httpx.ConnectError("Connection error")
+        mock_send.side_effect = Exception("Connection error")
         analytics._do_normal_analytics_request("placeholder", {})
-        mock_post.assert_called()
+        mock_send.assert_called()
 
-    @patch("httpx.post")
+    @patch("gradio.analytics._send_telemetry_in_thread")
     def test_error_analytics_successful(self, mock_post, monkeypatch):
         monkeypatch.setenv("GRADIO_ANALYTICS_ENABLED", "True")
         analytics.error_analytics("placeholder")
-        mock_post.assert_called()
 
     @patch.object(wasm_utils, "IS_WASM", True)
     @patch("gradio.analytics.pyodide_pyfetch")
@@ -58,30 +54,8 @@ class TestAnalytics:
         # Ref: https://superfastpython.com/asyncio-wait-for-tasks/#How_to_Wait_for_All_Background_Tasks
         all_tasks = asyncio.all_tasks(loop)
         current_task = asyncio.current_task()
+        assert current_task
         all_tasks.remove(current_task)
         await asyncio.wait(all_tasks)
 
         pyodide_pyfetch.assert_called()
-
-
-class TestIPAddress:
-    @pytest.mark.flaky
-    def test_get_ip(self):
-        Context.ip_address = None
-        ip = analytics.get_local_ip_address()
-        if ip in ("No internet connection", "Analytics disabled"):
-            return
-        ipaddress.ip_address(ip)
-
-    @patch("httpx.get")
-    def test_get_ip_without_internet(self, mock_get, monkeypatch):
-        mock_get.side_effect = httpx.ConnectError("Connection error")
-        monkeypatch.setenv("GRADIO_ANALYTICS_ENABLED", "True")
-        Context.ip_address = None
-        ip = analytics.get_local_ip_address()
-        assert ip == "No internet connection"
-
-        monkeypatch.setenv("GRADIO_ANALYTICS_ENABLED", "False")
-        Context.ip_address = None
-        ip = analytics.get_local_ip_address()
-        assert ip == "Analytics disabled"

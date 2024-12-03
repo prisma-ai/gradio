@@ -8,7 +8,6 @@ import textwrap
 def copy_all_demos(source_dir: str, dest_dir: str):
     demos_to_copy = [
         "audio_debugger",
-        "altair_plot",
         "blocks_essay",
         "blocks_group",
         "blocks_js_methods",
@@ -24,17 +23,22 @@ def copy_all_demos(source_dir: str, dest_dir: str):
         "fake_gan",
         "fake_diffusion_with_gif",
         "file_explorer_component_events",
+        "gradio_pdf_demo",
         "image_mod_default_image",
+        "image_editor_events",
         "image_segmentation",
         "interface_random_slider",
         "kitchen_sink",
         "kitchen_sink_random",
+        "login_with_huggingface",
         "matrix_transpose",
+        "mini_leaderboard",
         "model3D",
         "native_plots",
         "reverse_audio",
         "stt_or_tts",
         "stream_audio",
+        "stream_audio_out",
         "stream_frames",
         "video_component",
         "zip_files",
@@ -64,14 +68,12 @@ if __name__ == "__main__":
         pathlib.Path(__file__).parent, "..", "demo", "all_demos", "requirements.txt"
     )
     requirements = f"""
-    {args.gradio_client_version}
-    {args.gradio_version}
+    gradio_client=={args.gradio_client_version}
+    gradio=={args.gradio_version}
+    matplotlib
     pypistats==1.1.0
-    plotly==5.10.0
-    opencv-python==4.6.0.66
-    transformers==4.21.1
-    torch==1.12.1
+    plotly
     altair
     vega_datasets
     """
-    open(reqs_file_path, "w").write(textwrap.dedent(requirements))
+    pathlib.Path(reqs_file_path).write_text(textwrap.dedent(requirements))

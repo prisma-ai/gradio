@@ -2,12 +2,12 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import ClassVar, Literal, Optional, Union
 from uuid import UUID
 
 import pytest
 from gradio_client.utils import json_schema_to_python_type
-from pydantic import Field, confloat, conint, conlist
+from pydantic import Field
 from pydantic.networks import AnyUrl, EmailStr, IPvAnyAddress
 
 from gradio.data_classes import GradioModel, GradioRootModel
@@ -31,19 +31,19 @@ class FloatModel(GradioModel):
 
 
 class ListModel(GradioModel):
-    items: List[int]
+    items: list[int]
 
     answer: ClassVar = "Dict(items: List[int])"
 
 
 class DictModel(GradioModel):
-    data_dict: Dict[str, int]
+    data_dict: dict[str, int]
 
     answer: ClassVar = "Dict(data_dict: Dict(str, int))"
 
 
 class DictModel2(GradioModel):
-    data_dict: Dict[str, List[float]]
+    data_dict: dict[str, list[float]]
 
     answer: ClassVar = "Dict(data_dict: Dict(str, List[float]))"
 
@@ -83,7 +83,7 @@ class RootWithNestedModel(GradioModel):
 class LessNestedModel(GradioModel):
     nested_int: int
     nested_enum: ColorEnum
-    nested_dict: Dict[str, List[Union[int, float]]]
+    nested_dict: dict[str, list[Union[int, float]]]
 
     answer: ClassVar = "Dict(nested_int: int, nested_enum: Literal['red', 'green', 'blue'], nested_dict: Dict(str, List[int | float]))"
 
@@ -95,7 +95,7 @@ class StatusModel(GradioModel):
 
 
 class PointModel(GradioRootModel):
-    root: Tuple[float, float]
+    root: tuple[float, float]
 
     answer: ClassVar = "Tuple[float, float]"
 
@@ -139,7 +139,7 @@ class DateTimeModel(GradioModel):
 
 
 class SetModel(GradioModel):
-    unique_numbers: Set[int]
+    unique_numbers: set[int]
 
     answer: ClassVar = "Dict(unique_numbers: List[int])"
 
@@ -150,7 +150,7 @@ class ItemModel(GradioModel):
 
 
 class OrderModel(GradioModel):
-    items: List[ItemModel]
+    items: list[ItemModel]
 
     answer: ClassVar = "Dict(items: List[Dict(name: str, price: float)])"
 
@@ -161,14 +161,6 @@ class TemperatureUnitEnum(Enum):
     KELVIN = "Kelvin"
 
 
-class TemperatureConversionModel(GradioModel):
-    temperature: confloat(ge=-273.15, le=1.416808)
-    from_unit: TemperatureUnitEnum
-    to_unit: TemperatureUnitEnum = Field(..., title="Target temperature unit")
-
-    answer: ClassVar = "Dict(temperature: float, from_unit: Literal['Celsius', 'Fahrenheit', 'Kelvin'], to_unit: All[Literal['Celsius', 'Fahrenheit', 'Kelvin']])"
-
-
 class CartItemModel(GradioModel):
     product_name: str = Field(..., title="Name of the product", max_length=50)
     quantity: int = Field(..., title="Quantity of the product", ge=1)
@@ -176,7 +168,7 @@ class CartItemModel(GradioModel):
 
 
 class ShoppingCartModel(GradioModel):
-    items: List[CartItemModel]
+    items: list[CartItemModel]
 
     answer: ClassVar = "Dict(items: List[Dict(product_name: str, quantity: int, price_per_unit: float)])"
 
@@ -186,28 +178,14 @@ class CoordinateModel(GradioModel):
     longitude: float
 
 
-class PathModel(GradioModel):
-    coordinates: conlist(CoordinateModel, min_length=2, max_length=2)
-
-    answer: ClassVar = (
-        "Dict(coordinates: List[Dict(latitude: float, longitude: float)])"
-    )
-
-
-class CreditCardModel(GradioModel):
-    card_number: conint(ge=1, le=9999999999999999)
-
-    answer: ClassVar = "Dict(card_number: int)"
-
-
 class TupleListModel(GradioModel):
-    data: List[Tuple[int, str]]
+    data: list[tuple[int, str]]
 
     answer: ClassVar = "Dict(data: List[Tuple[int, str]]"
 
 
 class PathListModel(GradioModel):
-    file_paths: List[Path]
+    file_paths: list[Path]
 
     answer: ClassVar = "Dict(file_paths: List[str])"
 
@@ -215,7 +193,7 @@ class PathListModel(GradioModel):
 class PostModel(GradioModel):
     author: str
     content: str
-    tags: List[str]
+    tags: list[str]
     likes: int = 0
 
     answer: ClassVar = "Dict(author: str, content: str, tags: List[str], likes: int)"
@@ -225,7 +203,7 @@ Person = namedtuple("Person", ["name", "age"])
 
 
 class NamedTupleDictionaryModel(GradioModel):
-    people: Dict[str, Person]
+    people: dict[str, Person]
 
     answer: ClassVar = "Dict(people: Dict(str, Tuple[Any, Any]))"
 
@@ -252,10 +230,7 @@ MODELS = [
     DateTimeModel,
     SetModel,
     OrderModel,
-    TemperatureConversionModel,
     ShoppingCartModel,
-    PathModel,
-    CreditCardModel,
     PathListModel,
     NamedTupleDictionaryModel,
 ]

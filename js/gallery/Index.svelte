@@ -3,14 +3,16 @@
 </script>
 
 <script lang="ts">
+	import type { GalleryImage, GalleryVideo } from "./types";
 	import type { Gradio, ShareData, SelectData } from "@gradio/utils";
 	import { Block, UploadText } from "@gradio/atoms";
 	import Gallery from "./shared/Gallery.svelte";
 	import type { LoadingStatus } from "@gradio/statustracker";
 	import { StatusTracker } from "@gradio/statustracker";
-	import type { FileData } from "@gradio/client";
 	import { createEventDispatcher } from "svelte";
 	import { BaseFileUpload } from "@gradio/file";
+
+	type GalleryData = GalleryImage | GalleryVideo;
 
 	export let loading_status: LoadingStatus;
 	export let show_label: boolean;
@@ -19,7 +21,8 @@
 	export let elem_id = "";
 	export let elem_classes: string[] = [];
 	export let visible = true;
-	export let value: { image: FileData; caption: string | null }[] | null = null;
+	export let value: GalleryData[] | null = null;
+	export let file_types: string[] | null = ["image", "video"];
 	export let container = true;
 	export let scale: number | null = null;
 	export let min_width: number | undefined = undefined;
@@ -41,11 +44,13 @@
 		share: ShareData;
 		error: string;
 		prop_change: Record<string, any>;
+		clear_status: LoadingStatus;
 	}>;
+	export let show_fullscreen_button = true;
 
 	const dispatch = createEventDispatcher();
 
-	$: no_value = Array.isArray(value) ? value.length === 0 : !value;
+	$: no_value = value === null ? true : value.length === 0;
 	$: selected_index, dispatch("prop_change", { selected_index });
 </script>
 
@@ -65,19 +70,32 @@
 		autoscroll={gradio.autoscroll}
 		i18n={gradio.i18n}
 		{...loading_status}
+		on:clear_status={() => gradio.dispatch("clear_status", loading_status)}
 	/>
 	{#if interactive && no_value}
 		<BaseFileUpload
 			value={null}
 			{root}
 			{label}
+			max_file_size={gradio.max_file_size}
 			file_count={"multiple"}
-			file_types={["image"]}
+			{file_types}
 			i18n={gradio.i18n}
+			upload={(...args) => gradio.client.upload(...args)}
+			stream_handler={(...args) => gradio.client.stream(...args)}
 			on:upload={(e) => {
 				const files = Array.isArray(e.detail) ? e.detail : [e.detail];
-				value = files.map((x) => ({ image: x, caption: null }));
+				value = files.map((x) =>
+					x.mime_type?.includes("video")
+						? { video: x, caption: null }
+						: { image: x, caption: null }
+				);
 				gradio.dispatch("upload", value);
+			}}
+			on:error={({ detail }) => {
+				loading_status = loading_status || {};
+				loading_status.status = "error";
+				gradio.dispatch("error", detail);
 			}}
 		>
 			<UploadText i18n={gradio.i18n} type="gallery" />
@@ -102,6 +120,8 @@
 			{show_share_button}
 			{show_download_button}
 			i18n={gradio.i18n}
+			_fetch={(...args) => gradio.client.fetch(...args)}
+			{show_fullscreen_button}
 		/>
 	{/if}
 </Block>

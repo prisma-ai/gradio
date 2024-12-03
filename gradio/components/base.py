@@ -10,14 +10,24 @@ import json
 import sys
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Sequence
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
+
+import gradio_client.utils as client_utils
 
 from gradio import utils
 from gradio.blocks import Block, BlockContext
 from gradio.component_meta import ComponentMeta
-from gradio.data_classes import GradioDataModel
+from gradio.data_classes import (
+    BaseModel,
+    DeveloperPath,
+    FileData,
+    FileDataDict,
+    GradioDataModel,
+    MediaStreamChunk,
+)
 from gradio.events import EventListener
 from gradio.layouts import Form
 from gradio.processing_utils import move_files_to_cache
@@ -28,6 +38,8 @@ if TYPE_CHECKING:
     class DataframeData(TypedDict):
         headers: list[str]
         data: list[list[str | int | bool]]
+
+    from gradio.components import Timer
 
 
 class _Keywords(Enum):
@@ -81,8 +93,7 @@ class ComponentBase(ABC, metaclass=ComponentMeta):
     @abstractmethod
     def example_inputs(self) -> Any:
         """
-        The example inputs for this component as a dictionary whose values are example inputs compatible with this component.
-        Keys of the dictionary are: raw, serialized
+        Deprecated and replaced by `example_payload()` and `example_value()`.
         """
         pass
 
@@ -102,7 +113,7 @@ class ComponentBase(ABC, metaclass=ComponentMeta):
 
     @property
     @abstractmethod
-    def skip_api(self):
+    def skip_api(self) -> bool:
         """Whether this component should be skipped from the api return value"""
 
     @classmethod
@@ -142,13 +153,16 @@ class Component(ComponentBase, Block):
         elem_id: str | None = None,
         elem_classes: list[str] | str | None = None,
         render: bool = True,
+        key: int | str | None = None,
         load_fn: Callable | None = None,
-        every: float | None = None,
+        every: Timer | float | None = None,
+        inputs: Component | Sequence[Component] | set[Component] | None = None,
     ):
         self.server_fns = [
-            value
-            for value in self.__class__.__dict__.values()
-            if callable(value) and getattr(value, "_is_server_fn", False)
+            getattr(self, value)
+            for value in dir(self.__class__)
+            if callable(getattr(self, value))
+            and getattr(getattr(self, value), "_is_server_fn", False)
         ]
 
         # Svelte components expect elem_classes to be a list
@@ -168,6 +182,7 @@ class Component(ComponentBase, Block):
             elem_classes=elem_classes,
             visible=visible,
             render=render,
+            key=key,
         )
         if isinstance(self, StreamingInput):
             self.check_streamable()
@@ -192,22 +207,36 @@ class Component(ComponentBase, Block):
 
         # load_event is set in the Blocks.attach_load_events method
         self.load_event: None | dict[str, Any] = None
-        self.load_event_to_attach: None | tuple[Callable, float | None] = None
-        load_fn, initial_value = self.get_load_fn_and_initial_value(value)
+        self.load_event_to_attach: (
+            None
+            | tuple[
+                Callable,
+                list[tuple[Block, str]],
+                Component | Sequence[Component] | set[Component] | None,
+            ]
+        ) = None
+        load_fn, initial_value = self.get_load_fn_and_initial_value(value, inputs)
         initial_value = self.postprocess(initial_value)
+        # Serialize the json value so that it gets stored in the
+        # config as plain json, for images/audio etc. `move_files_to_cache`
+        # will call model_dump
+        if isinstance(initial_value, BaseModel):
+            initial_value = initial_value.model_dump()
         self.value = move_files_to_cache(
             initial_value,
             self,  # type: ignore
             postprocess=True,
-            add_urls=True,
+            keep_in_cache=True,
         )
+        if client_utils.is_file_obj(self.value):
+            self.keep_in_cache.add(self.value["path"])
 
         if callable(load_fn):
-            self.attach_load_event(load_fn, every)
+            self.attach_load_event(load_fn, every, inputs)
 
         self.component_class_id = self.__class__.get_component_class_id()
 
-    TEMPLATE_DIR = "./templates/"
+    TEMPLATE_DIR = DeveloperPath("./templates/")
     FRONTEND_DIR = "../../frontend/"
 
     def get_config(self):
@@ -224,24 +253,40 @@ class Component(ComponentBase, Block):
         return False
 
     @staticmethod
-    def get_load_fn_and_initial_value(value):
+    def get_load_fn_and_initial_value(value, inputs=None):
+        initial_value = None
         if callable(value):
-            initial_value = value()
+            if not inputs:
+                initial_value = value()
             load_fn = value
         else:
             initial_value = value
             load_fn = None
         return load_fn, initial_value
 
-    def __str__(self):
-        return self.__repr__()
+    def attach_load_event(
+        self,
+        callable: Callable,
+        every: Timer | float | None,
+        inputs: Component | Sequence[Component] | set[Component] | None = None,
+    ):
+        """Add an event that runs `callable`, optionally at interval specified by `every`."""
+        if isinstance(inputs, Component):
+            inputs = [inputs]
+        changeable_events: list[tuple[Block, str]] = (
+            [(i, "change") for i in inputs if hasattr(i, "change")] if inputs else []
+        )
+        if isinstance(every, (int, float)):
+            from gradio.components import Timer
 
-    def __repr__(self):
-        return f"{self.get_block_name()}"
-
-    def attach_load_event(self, callable: Callable, every: float | None):
-        """Add a load event that runs `callable`, optionally every `every` seconds."""
-        self.load_event_to_attach = (callable, every)
+            every = Timer(every)
+        if every:
+            changeable_events.append((every, "tick"))
+        self.load_event_to_attach = (
+            callable,
+            changeable_events,
+            inputs,
+        )
 
     def process_example(self, value):
         """
@@ -261,16 +306,43 @@ class Component(ComponentBase, Block):
         """Deprecated and replaced by `process_example()`."""
         return self.process_example(value)
 
+    def example_inputs(self) -> Any:
+        """Deprecated and replaced by `example_payload()` and `example_value()`."""
+        return self.example_payload()
+
+    def example_payload(self) -> Any:
+        """
+        An example input data for this component, e.g. what is passed to this component's preprocess() method.
+        This is used to generate the docs for the View API page for Gradio apps using this component.
+        """
+        raise NotImplementedError()
+
+    def example_value(self) -> Any:
+        """
+        An example output data for this component, e.g. what is passed to this component's postprocess() method.
+        This is used to generate an example value if this component is used as a template for a custom component.
+        """
+        raise NotImplementedError()
+
     def api_info(self) -> dict[str, Any]:
         """
         The typing information for this component as a dictionary whose values are a list of 2 strings: [Python type, language-agnostic description].
         Keys of the dictionary are: raw_input, raw_output, serialized_input, serialized_output
         """
         if self.data_model is not None:
-            return self.data_model.model_json_schema()
+            schema = self.data_model.model_json_schema()
+            desc = schema.pop("description", None)
+            schema["additional_description"] = desc
+            return schema
         raise NotImplementedError(
             f"The api_info method has not been implemented for {self.get_block_name()}"
         )
+
+    def api_info_as_input(self) -> dict[str, Any]:
+        return self.api_info()
+
+    def api_info_as_output(self) -> dict[str, Any]:
+        return self.api_info()
 
     def flag(self, payload: Any, flag_dir: str | Path = "") -> str:
         """
@@ -279,7 +351,11 @@ class Component(ComponentBase, Block):
         if self.data_model:
             payload = self.data_model.from_json(payload)
             Path(flag_dir).mkdir(exist_ok=True)
-            return payload.copy_to_dir(flag_dir).model_dump_json()
+            payload = payload.copy_to_dir(flag_dir).model_dump()
+        if isinstance(payload, BaseModel):
+            payload = payload.model_dump()
+        if not isinstance(payload, str):
+            payload = json.dumps(payload)
         return payload
 
     def read_from_flag(self, payload: Any):
@@ -310,9 +386,24 @@ class StreamingOutput(metaclass=abc.ABCMeta):
         self.streaming: bool
 
     @abc.abstractmethod
-    def stream_output(
+    async def stream_output(
         self, value, output_id: str, first_chunk: bool
-    ) -> tuple[bytes, Any]:
+    ) -> tuple[MediaStreamChunk | None, FileDataDict | dict]:
+        pass
+
+    @abc.abstractmethod
+    async def combine_stream(
+        self,
+        stream: list[bytes],
+        desired_output_format: str | None = None,
+        only_file=False,
+    ) -> GradioDataModel | FileData:
+        """Combine all of the stream chunks into a single file.
+
+        This is needed for downloading the stream and for caching examples.
+        If `only_file` is True, only the FileData corresponding to the file should be returned (needed for downloading the stream).
+        The desired_output_format optionally converts the combined file. Should only be used for cached examples.
+        """
         pass
 
 
@@ -357,7 +448,7 @@ def get_component_instance(
         component_obj = comp
     else:
         raise ValueError(
-            f"Component must provided as a `str` or `dict` or `Component` but is {comp}"
+            f"Component must be provided as a `str` or `dict` or `Component` but is {comp}"
         )
 
     if render and not component_obj.is_rendered:

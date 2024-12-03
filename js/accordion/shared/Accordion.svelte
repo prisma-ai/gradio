@@ -1,23 +1,32 @@
 <script lang="ts">
-	import { writable } from "svelte/store";
+	import { createEventDispatcher } from "svelte";
+	const dispatch = createEventDispatcher<{
+		expand: void;
+		collapse: void;
+	}>();
 
-	export let initial_open = true;
+	export let open = true;
 	export let label = "";
-
-	let open = writable(initial_open);
-
-	const toggle_open = (): void => {
-		open.update((value) => !value);
-	};
 </script>
 
-<button on:click={toggle_open} class="label-wrap" class:open={$open}>
+<button
+	on:click={() => {
+		open = !open;
+		if (open) {
+			dispatch("expand");
+		} else {
+			dispatch("collapse");
+		}
+	}}
+	class="label-wrap"
+	class:open
+>
 	<span>{label}</span>
-	<span style:transform={$open ? "rotate(0)" : "rotate(90deg)"} class="icon">
+	<span style:transform={open ? "rotate(0)" : "rotate(90deg)"} class="icon">
 		▼
 	</span>
 </button>
-<div style:display={$open ? "block" : "none"}>
+<div style:display={open ? "block" : "none"}>
 	<slot />
 </div>
 
@@ -31,6 +40,7 @@
 		justify-content: space-between;
 		cursor: pointer;
 		width: var(--size-full);
+		color: var(--accordion-text-color);
 	}
 	.label-wrap.open {
 		margin-bottom: var(--size-2);
