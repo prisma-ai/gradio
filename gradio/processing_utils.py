@@ -188,11 +188,7 @@ def encode_pil_to_bytes(pil_image, format="png"):
                 loop=0,
             )
         else:
-            pnginfo = get_pil_metadata(pil_image)
-            exif = get_pil_exif_bytes(pil_image)
-            params = {"pnginfo": pnginfo if pnginfo else {},
-                      "exif": exif if exif else {}}
-            pil_image.save(output_bytes, format, **params)
+            pil_image.save(output_bytes, format, **pil_image.info)
         return output_bytes.getvalue()
 
 

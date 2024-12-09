@@ -66,7 +66,7 @@ def save_image(
         # Catch error if format is not supported by PIL
         except (KeyError, ValueError):
             path = processing_utils.save_pil_to_cache(
-                y, cache_dir=cache_dir, format="png"
+                y, cache_dir=cache_dir, format="jpeg"
             )
     elif isinstance(y, Path):
         path = str(y)
