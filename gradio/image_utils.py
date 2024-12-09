@@ -20,7 +20,7 @@ def format_image(
     type: Literal["numpy", "pil", "filepath"],
     cache_dir: str,
     name: str = "image",
-    format: str = "webp",
+    format: str = "jpeg",
 ) -> np.ndarray | PIL.Image.Image | str | None:
     """Helper method to format an image based on self.type"""
     if im is None:
@@ -52,7 +52,7 @@ def format_image(
 
 
 def save_image(
-    y: np.ndarray | PIL.Image.Image | str | Path, cache_dir: str, format: str = "webp"
+    y: np.ndarray | PIL.Image.Image | str | Path, cache_dir: str, format: str = "jpeg"
 ):
     if isinstance(y, np.ndarray):
         path = processing_utils.save_img_array_to_cache(
@@ -122,7 +122,7 @@ def decode_base64_to_image_array(encoding: str) -> np.ndarray:
     return np.asarray(img)
 
 
-def decode_base64_to_file(encoding: str, cache_dir: str, format: str = "webp") -> str:
+def decode_base64_to_file(encoding: str, cache_dir: str, format: str = "jpeg") -> str:
     img = decode_base64_to_image(encoding)
     return save_image(img, cache_dir, format)
 
